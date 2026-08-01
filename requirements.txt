@@ -1,0 +1,42 @@
+# Core deep learning / HF stack
+# NOTE: torch/torchvision/torchaudio are intentionally NOT pinned here.
+# The Dockerfile's base image (nvcr.io/nvidia/pytorch) ships a torch build
+# compiled specifically against its bundled CUDA/cuDNN, and Google Colab
+# ships its own CUDA-matched torch too. Re-pinning a generic PyPI torch
+# wheel here would force pip to overwrite that matched build and risks ABI
+# mismatches with bitsandbytes. If you run this OUTSIDE Docker/Colab,
+# install a CUDA-matched torch first (see
+# https://pytorch.org/get-started/locally/), then this file.
+#
+# Versions below were verified together on 2026-08-01: all import cleanly
+# side by side (`pip check` clean) and a full SFTConfig + SFTTrainer +
+# LoRA train/save cycle runs end to end. transformers 5.x / trl 1.x use a
+# different SFTTrainer API than trl 0.9.x (SFTConfig instead of
+# TrainingArguments, `processing_class` instead of `tokenizer`) — train.py
+# already reflects this.
+transformers==5.14.1
+accelerate==1.14.0
+peft==0.20.0
+bitsandbytes==0.50.0
+datasets==5.0.1
+trl==1.9.2
+
+# Experiment tracking (local-only, no account required)
+tensorboard==2.21.0
+
+# Evaluation
+evaluate==0.4.6
+rouge-score==0.1.2
+sacrebleu==2.6.0
+nltk==3.10.0
+
+# Config / utils
+pyyaml==6.0.3
+sentencepiece==0.2.2
+protobuf==7.35.1
+scipy==1.18.0
+numpy==2.5.1
+
+# Notebook (optional exploration)
+jupyter==1.1.1
+ipykernel==7.3.0
