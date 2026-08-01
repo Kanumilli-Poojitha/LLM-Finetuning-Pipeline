@@ -1,0 +1,111 @@
+# =============================================================================
+# Central hyperparameter configuration for the LoRA/QLoRA fine-tuning pipeline.
+# Every script (data_pipeline.py, train.py, evaluate.py) reads from this file
+# so no hyperparameter is ever hardcoded in source.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Dataset
+# ---------------------------------------------------------------------------
+dataset:
+  name_or_path: "databricks/databricks-dolly-15k"   # HF Hub dataset ID or local path
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  train_split: 0.8
+  val_split: 0.1
+  test_split: 0.1
+  seed: 42
+  min_examples: 1000
+  max_seq_length: 2048          # hard truncation limit to avoid OOM
+  text_field: "text"            # column name SFTTrainer will read from
+  system_prompt: >-
+    You are a helpful, precise assistant. Answer the user's instruction
+    using the provided context when available.
+
+# ---------------------------------------------------------------------------
+# Base model
+# ---------------------------------------------------------------------------
+model:
+  base_model_id: "microsoft/Phi-3-mini-4k-instruct"   # 1B-7B param open model
+  # False: use transformers' own built-in Phi3 architecture (native since
+  # transformers 4.41) instead of downloading the model repo's custom
+  # modeling_phi3.py. The repo's custom code predates transformers' RoPE
+  # config normalization (rope_scaling now keyed by "rope_type", not
+  # "type") and raises KeyError('type') on current transformers. The
+  # native implementation is written against the same normalization
+  # transformers itself applies, so it stays self-consistent.
+  trust_remote_code: false
+  use_fast_tokenizer: true
+
+# ---------------------------------------------------------------------------
+# Quantization (QLoRA)
+# ---------------------------------------------------------------------------
+quantization:
+  load_in_4bit: true
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_use_double_quant: true
+  # "auto" detects whether the GPU supports bf16 (Ampere/Ada/Hopper) at
+  # runtime and uses it; falls back to float16 automatically on older
+  # consumer GPUs (GTX 16xx, RTX 20xx). No manual editing needed. You can
+  # still force "bfloat16" or "float16" explicitly — an unsupported choice
+  # is auto-corrected to float16 with a warning rather than failing.
+  bnb_4bit_compute_dtype: "auto"
+
+# ---------------------------------------------------------------------------
+# LoRA adapter configuration
+# ---------------------------------------------------------------------------
+lora:
+  r: 16
+  lora_alpha: 32                # common rule of thumb: alpha = 2 * r
+  lora_dropout: 0.05
+  bias: "none"
+  task_type: "CAUSAL_LM"
+  target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+
+# ---------------------------------------------------------------------------
+# Training arguments
+# ---------------------------------------------------------------------------
+training:
+  output_dir: "outputs/checkpoints"
+  final_model_dir: "outputs/final_adapter"
+  num_train_epochs: 3
+  max_steps: -1                 # -1 = ignore, train for num_train_epochs instead
+  learning_rate: 2.0e-4
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.03
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 2
+  gradient_accumulation_steps: 8   # effective batch size = 2 * 8 = 16
+  gradient_checkpointing: true
+  optim: "paged_adamw_8bit"
+  weight_decay: 0.01
+  max_grad_norm: 0.3
+  # "auto" detects bf16 GPU support at runtime and picks bf16 or fp16
+  # accordingly — see quantization.bnb_4bit_compute_dtype above for details.
+  precision: "auto"
+  logging_steps: 10
+  eval_strategy: "steps"
+  eval_steps: 50
+  save_strategy: "steps"
+  save_steps: 50
+  save_total_limit: 3
+  load_best_model_at_end: true
+  metric_for_best_model: "eval_loss"
+  seed: 42
+  report_to: "tensorboard"      # local-only, no account or API key needed
+
+# ---------------------------------------------------------------------------
+# Evaluation
+# ---------------------------------------------------------------------------
+evaluation:
+  test_file: "data/processed/test.jsonl"
+  max_new_tokens: 128
+  num_qualitative_examples: 5
+  metrics:
+    - "rouge"
+  report_path: "evaluation_report.md"
+  results_dir: "outputs/eval_results"
