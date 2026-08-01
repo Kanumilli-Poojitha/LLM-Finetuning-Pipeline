@@ -1,0 +1,31 @@
+# NOTE: no top-level `version:` key — it's deprecated/ignored by Compose V2
+# (the only version Docker Desktop ships now) and just prints a warning.
+services:
+  llm_tuner:
+    build: .
+    image: llm-finetuning-pipeline:latest
+    container_name: llm_tuner
+    volumes:
+      # Mount the whole project so code edits on the host are reflected
+      # immediately inside the container without rebuilding the image.
+      - .:/workspace
+      # Persist the HF hub cache across container restarts so you don't
+      # re-download multi-GB model weights every time.
+      - huggingface_cache:/workspace/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    env_file:
+      - .env
+    ipc: host  # PyTorch DataLoader workers need more shared memory than the default
+    shm_size: '8gb'
+    stdin_open: true
+    tty: true
+    command: bash
+
+volumes:
+  huggingface_cache:
