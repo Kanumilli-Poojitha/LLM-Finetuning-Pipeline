@@ -1,0 +1,23 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Data / model artifacts (too large for git; regenerate via data_pipeline.py / train.py)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+outputs/
+*.safetensors
+*.bin
+
+# Caches
+.cache/
+wandb/
+
+# OS
+.DS_Store

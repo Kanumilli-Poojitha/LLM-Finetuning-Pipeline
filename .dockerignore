@@ -1,0 +1,27 @@
+# Never bake secrets into image layers
+.env
+
+# Version control / editor cruft
+.git
+.gitignore
+.vscode
+.idea
+
+# Large / regenerable artifacts — mounted at runtime via docker-compose
+# volumes, not needed in the image itself
+data/
+outputs/
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+*.egg-info/
+
+# Caches
+.cache/
+wandb/
+
+# OS
+.DS_Store
